@@ -124,3 +124,30 @@ TODO: do some better explanation of why I'm naming it intentions
 
 ## Recursion
 
+Now that we can validate 2 arguments, we just need to extends it for `n` arguments with the help of some recursion:
+
+```ts
+type FunctionChain<T> =
+  T extends [(i: infer I) => infer O] // Base case: single function
+    ? T
+    : (
+      // Recursive case: test if the first 2 functions are matching
+      T extends [(i1: infer I) => infer O1, (i2: infer O1) => infer O2, ...(infer REST)]
+        // And then recurse
+        ? [Head<T>, ...FunctionChain<Tail<T>>]
+        : ChainError<T>
+      )
+```
+
+For the full implementation of all helpers, see `chain.ts`
+
+## Footnotes
+1. In this blog, I've been talking about "returning" types from the intents, but this is not technically what's happening. We're not passing the types of our functions to the intent. Instead, as you can see from the signature, we bind the _result_ of the intent to our functions. So typescript effectively has to work backwards. I can't pretend to be knowledgeable enough to explain how exactly this works, but it does.
+
+2. This will still hit recursion limits, around 30ish (TODO: test). TODO2: possibly we can make this logarithmic
+
+On logarithmic: one possible idea is to split the list in 2 halves each time. There's 2 caveats here:
+- Can't do arithmetics, so can't do `T["length"]/2`. We can likely precalc it, e.g. `type Halves = [0, 0, 1, 1, 2, 2, 3, 3,....]` and then use `Halves[T["length"]]`.
+- Can't split a list easily, e.g. there's no efficient `Take<List, n>` (common impl would recurse `n` deep, running into the same problems we try to solve). Might come up with something clever by converting it to an object and working on the keys?
+- Could also do a lot more with precalc. E.g. let's say that we want to have a limit of 1024. We can precalc the "halves": [0...511, 512...1024] [0...255][255...512] etc. We can then use these as indices
+- Depending on our desire for infinity, we could also manually unroll. E.g. if we match on 4 params, then we can support up to >100 methods in the chain. Should be plenty.
