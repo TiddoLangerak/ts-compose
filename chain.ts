@@ -1,4 +1,4 @@
-import { Tail, Head } from './tuple.ts';
+import { Tail, Head } from './tuple';
 
 function chain<T extends any[]>(...funcs: FunctionChain<T>) : ChainResult<T> {
   return null as any;
@@ -26,7 +26,7 @@ type FunctionChain<T> =
 // E.g.:
 // ChainError<[3]> = [any => any];
 // ChainError<[I => O1, I2 => O2]> = [I => O1, O1 => any];
-type ChainError<T extends any[]> = 
+type ChainError<T> = 
   // We check if at least the first value is valid, such that we can use it in our error type
   T extends [(i1: infer I) => infer O1, ...(infer REST)]
     // If it is, then we can assume the error is in the second function, and we'll return an intented type with correct signature for 2nd function.
