@@ -12,6 +12,8 @@ MapOutput<I extends any[], F> =
       : never
     : never
 
+// Update: 2022-03-10: Not working... O is always inferred as unknown
+
 
 # Arithmetics
 Some ideas:
@@ -36,6 +38,8 @@ type Drop<A extends any[], N extends keyof A> =
   A & { [N] : __marker } extends [...(infer H), __marker & infer P, ...(infer T)]
     ? [P, ...T]
     : never
+
+// Update: 2022-03-10: Not working... N can't be used as index (only when doing a mapped type). And when doing a mapped type, then inference goes crazy
 
 The idea here is as followed:
 1. We first construct a new type that is the input list, with a marker on the Nth position: A & { [N]: __marker }
