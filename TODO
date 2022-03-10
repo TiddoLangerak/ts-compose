@@ -1,0 +1,63 @@
+# map:
+can do something like
+
+function map<I, F>(inputs: I, map: F) : MapOutput<I, F>{}
+
+with
+
+MapOutput<I extends any[], F> = 
+  I extends [infer H, ...(infer T)]
+    ? F extends (i: I) => infer O
+      ? [O, ...MapOutput<T, F>]
+      : never
+    : never
+
+
+# Arithmetics
+Some ideas:
+
+lets say we have a type of all natural numbers
+
+type N = [0, 1, 2, 3, 4, 5, ...]; (can probably derive this somehow)
+
+Then we can implement summing by chaining Drop. E.g. if we want to do 3 + 5, we'd do Drop<Drop<N, 5>, 3>
+N5 = Drop<N, 5> = [5, 6, 7, 8, 9, ...]
+N5p3 = Drop<N5, 3> = [8, 9, 10, ...]
+Take the first element, and whoppa we have the sum
+
+
+type Sum<A extends keyof N, B extends keyof N> = Drop<Drop<N, A>, B>[0];
+
+
+Now this still has the problem of an efficient implementation of Drop. I think we might be able to do this with the help of a marker element:
+
+class __marker {}
+type Drop<A extends any[], N extends keyof A> = 
+  A & { [N] : __marker } extends [...(infer H), __marker & infer P, ...(infer T)]
+    ? [P, ...T]
+    : never
+
+The idea here is as followed:
+1. We first construct a new type that is the input list, with a marker on the Nth position: A & { [N]: __marker }
+2. We then use this to split the list, with the help of an spread on both sides. I.e. [...(infer H), __marker & infer P, ...(infer T)]
+3. Once we have that, we can simply construct the new array
+
+I don't know if either 1 or 2 is possible though, needs some more experimentation
+
+Now implementing subtraction is more complicated. Could do something like:
+
+
+Subtract<A, B> = TakeRight<Take<N, A>, B>[0];
+E.g.: 
+Subtract<5,2> 
+N5 = Take<N, 5> = [0,1,2,3,4]
+N5m3 = TakeRight<N5, 2] = [3, 4]
+R = N5M3[0] = 3
+
+1. Take can be implemented similar as Drop
+2. TakeRight is more complicated. But maybe we can do something like: 
+  TakeRight<A, N> = 
+    T extends [...(infer H), ...(infer T extends Take<infer X, N>)]
+    Idea being that Take<infer X, N> should be some inferred array of size N.
+
+
