@@ -1,3 +1,6 @@
+# DISCLAIMER
+The approach described below here is not complete, and probably better not used in anything production facing at the moment.
+
 # Intended types: a new way to type function composition
 
 ## Introduction
@@ -17,7 +20,7 @@ function chain<I, O1, O2, ...., R>(f1: (i: I) => O1, f2: (O1) => O2, ...., fn: (
 }
 ```
 
-There's a problem however: this naive implementation has a variable number of template variables, and is potentially infinitely long. Neither of this is possible in TS. Therefore, commonly you'll see that functions like these get hardcoded typedefinitions for up to `n` arguments, or skip on typechecking altogether with the `any` type. But, I believe we can do better. 
+There's a problem however: this naive implementation has a variable number of template variables, and is potentially infinitely long. Neither of this is possible in TS. Therefore, commonly you'll see that functions like these get hardcoded typedefinitions for up to `n` arguments, or skip on typechecking altogether with the `any` type. But, I believe we can do better.
 
 For the last couple of years I've been trying to solve this problem on and off, and I think I finally got it!
 
@@ -36,7 +39,7 @@ type ValidateString<S> =
     : never
 ```
 
-The way this works is that `ValidateString` is an "identity" type for string types. I.e. if you pass some string type to `ValidateString`, then it'll return the same type unchanged. E.g. `ValidateString<string> = string` and `ValidateString<"foo"> = "Foo"`. 
+The way this works is that `ValidateString` is an "identity" type for string types. I.e. if you pass some string type to `ValidateString`, then it'll return the same type unchanged. E.g. `ValidateString<string> = string` and `ValidateString<"foo"> = "Foo"`.
 If however you pass something that's NOT a string, then you'll get `never`: `ValidateString<number> = never`.
 
 To see it in action, consider this:
@@ -81,7 +84,7 @@ const invalid = chain2(double, strlen); // Error
 
 However, there's one small annoyance here: in the invalid case, we get an error on the _first_ argument. Moreover, the error isn't very descriptive to tell us what's wrong, it just tells that we can't assign to `never`. Let's fix this:
 
-As you might've noticed, the "else" branch is used as "error type": if the input is invalid, then the "else" branch becomes the expected type. So far we've used `never` - since nothing can be assigned to `never` - but we can also return some different type here. The only catch is that this type MUST be a valid type as well, and moreover it must NOT match the actual input type (todo: in depth explanation).
+As you might've noticed, the "else" branch is used as "error type": if the input is invalid, then the "else" branch becomes the expected type. So far we've used `never` - since nothing can be assigned to `never` - but we can also return some different type here. The only catch is that this type MUST be a valid type as well, and moreover it must NOT match the actual input type.
 
 Now it's important to note here that if we get to the error branch, we don't actually know if we got a list of functions to begin with, or if the functions where valid. So we first need to check that. Also, I'll use a helper type to not overcomplicate the `ValidateFunctionChain2`:
 
@@ -108,10 +111,10 @@ And if we now use some invalid arguments, then we get a beautiful error message:
 const invalid = chain2(double, strlen);
 //                             ~~~~~~
 // Argument of type '(i: string) => number' is not assignable to parameter of type '(i2: number) => any'.
-const invalid2 = chain2(3); 
+const invalid2 = chain2(3);
 //               ~~~~~~~~
 // Expected 2 arguments, but got 1
-const invalid3 = chain2(3, 4); 
+const invalid3 = chain2(3, 4);
 //                      ~
 // Argument of type '(i: string) => number' is not assignable to parameter of type '(i2: number) => any'.
 ```
@@ -119,8 +122,6 @@ const invalid3 = chain2(3, 4);
 So just to recap how this works:
 - If our arguments form a valid function chain, then `ValidateFunctionChain2` returns the type of the passed in function chain.
 - If our arguments do NOT form a valid function chain, then `ValidateFunctionChain2` returns the _intended_ signature of the function chain. This won't match the actual signature, and thus we'll get a meaningful error.
-
-TODO: do some better explanation of why I'm naming it intentions
 
 ## Recursion
 
@@ -142,12 +143,8 @@ type FunctionChain<T> =
 For the full implementation of all helpers, see `chain.ts`
 
 ## Footnotes
-1. In this blog, I've been talking about "returning" types from the intents, but this is not technically what's happening. We're not passing the types of our functions to the intent. Instead, as you can see from the signature, we bind the _result_ of the intent to our functions. So typescript effectively has to work backwards. I can't pretend to be knowledgeable enough to explain how exactly this works, but it does.
+1. After writing this, I found out that this approach doesn't work with functions that themselves use generic types in their arguments. This approach will therefore unfortunately still not work very well, and at the moment just hardcoding for the first `n` arguments still seems to be the only realistic option.
 
-2. This will still hit recursion limits, around 30ish (TODO: test). TODO2: possibly we can make this logarithmic
+2. In this blog, I've been talking about "returning" types from the intents, but this is not technically what's happening. We're not passing the types of our functions to the intent. Instead, as you can see from the signature, we bind the _result_ of the intent to our functions. So typescript effectively has to work backwards. I can't pretend to be knowledgeable enough to explain how exactly this works, but it does.
 
-On logarithmic: one possible idea is to split the list in 2 halves each time. There's 2 caveats here:
-- Can't do arithmetics, so can't do `T["length"]/2`. We can likely precalc it, e.g. `type Halves = [0, 0, 1, 1, 2, 2, 3, 3,....]` and then use `Halves[T["length"]]`.
-- Can't split a list easily, e.g. there's no efficient `Take<List, n>` (common impl would recurse `n` deep, running into the same problems we try to solve). Might come up with something clever by converting it to an object and working on the keys?
-- Could also do a lot more with precalc. E.g. let's say that we want to have a limit of 1024. We can precalc the "halves": [0...511, 512...1024] [0...255][255...512] etc. We can then use these as indices
-- Depending on our desire for infinity, we could also manually unroll. E.g. if we match on 4 params, then we can support up to >100 methods in the chain. Should be plenty.
+3. This will still hit recursion limits, around 30ish, but we can possibly improve on this.
