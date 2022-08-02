@@ -1,5 +1,5 @@
 # DISCLAIMER
-The approach described below here is not complete, and probably better not used in anything production facing at the moment.
+The approach described below here is not complete, doesn't work with all functions, and is probably better not used in anything production facing at the moment.
 
 # Intended types: a new way to type function composition
 
